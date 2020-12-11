@@ -50,24 +50,29 @@ df.columns = ["volume", "close", "open", "high", "low"]
 # df['close'] = df['close'].pct_change() # Create arithmetic returns column
 # df['volume'] = df['volume'].pct_change()
 ################################## USING MOVING AVERAGES ##########################################
-df[['open', 'high', 'low', 'close', 'volume']] = df[['open', 'high', 'low', 'close', 'volume']].rolling(10).mean() 
-df['open'] = df['open'].pct_change() # Create arithmetic returns column
-df['high'] = df['high'].pct_change() # Create arithmetic returns column
-df['low'] = df['low'].pct_change() # Create arithmetic returns column
-df['close'] = df['close'].pct_change() # Create arithmetic returns column
-df['volume'] = df['volume'].pct_change()
-
+#df[['open', 'high', 'low', 'close', 'volume']] = df[['open', 'high', 'low', 'close', 'volume']].rolling(10).mean() 
+# df['open'] = df['open'].pct_change() # Create arithmetic returns column
+# df['high'] = df['high'].pct_change() # Create arithmetic returns column
+# df['low'] = df['low'].pct_change() # Create arithmetic returns column
+# df['close'] = df['close'].pct_change() # Create arithmetic returns column
+# df['volume'] = df['volume'].pct_change()
+df.replace([np.inf, -np.inf], np.nan, inplace=True)
+df.describe()
 df.dropna(inplace=True)
 
-min_return = min(df[['open', 'high', 'low', 'close']].min(axis=0))
-max_return = max(df[['open', 'high', 'low', 'close']].max(axis=0))
+from sklearn.preprocessing import MinMaxScaler
+scaler_train = MinMaxScaler()
+scaler_val = MinMaxScaler()
+scaler_test = MinMaxScaler()
 
-# Min-max normalize price columns (0-1 range)
-df['open'] = (df['open'] - min_return) / (max_return - min_return)
-df['high'] = (df['high'] - min_return) / (max_return - min_return)
-df['low'] = (df['low'] - min_return) / (max_return - min_return)
-df['close'] = (df['close'] - min_return) / (max_return - min_return)
+# min_return = min(df[['open', 'high', 'low', 'close']].min(axis=0))
+# max_return = max(df[['open', 'high', 'low', 'close']].max(axis=0))
 
+# # Min-max normalize price columns (0-1 range)
+# df['open'] = (df['open'] - min_return) / (max_return - min_return)
+# df['high'] = (df['high'] - min_return) / (max_return - min_return)
+# df['low'] = (df['low'] - min_return) / (max_return - min_return)
+# df['close'] = (df['close'] - min_return) / (max_return - min_return)
 
 
 times = sorted(df.index.values)
@@ -78,17 +83,20 @@ df_train = df[(df.index < last_20pct)]  # Training data are 80% of total data
 df_val = df[(df.index >= last_20pct) & (df.index < last_10pct)]
 df_test = df[(df.index >= last_10pct)]
 
-train_data = df_train.values
-val_data = df_val.values
-test_data = df_test.values
+df_train = scaler_train.fit_transform(df_train)
+df_val = scaler_val.fit_transform(df_val)
+df_test = scaler_val.fit_transform(df_test)
+
+train_data = df_train
+val_data = df_val
+test_data = df_test
 print(f'Training data shape: {train_data.shape}')
 print(f'Validation data shape: {val_data.shape}')
 print(f'Test data shape: {test_data.shape}')
 
-
-fig = plt.figure(figsize=(15,12))
-st = fig.suptitle("Data Separation", fontsize=20)
-st.set_y(0.95)
+# fig = plt.figure(figsize=(15,12))
+# st = fig.suptitle("Data Separation", fontsize=20)
+# st.set_y(0.95)
 
 ###############################################################################
 
@@ -318,11 +326,11 @@ def create_model():
   x = time_embedding(in_seq)
   x = Concatenate(axis=-1)([in_seq, x])
   x = attn_layer1((x, x, x))
-  x = attn_layer2((x, x, x))
-  x = attn_layer3((x, x, x))
+  #x = attn_layer2((x, x, x)) 
+  #x = attn_layer3((x, x, x))
   x = GlobalAveragePooling1D(data_format='channels_first')(x)
   x = Dropout(0.1)(x)
-  x = Dense(64, activation='relu')(x)
+  x = Dense(64, activation='sigmoid')(x)
   x = Dropout(0.1)(x)
   out = Dense(1, activation='linear')(x)
 
@@ -345,7 +353,7 @@ callback = [tf.keras.callbacks.ModelCheckpoint('Transformer2.hdf5',
 
 history = model.fit(X_train, y_train, 
                     batch_size=batch_size, 
-                    epochs=20, 
+                    epochs=35, 
                     callbacks=callback,
                     validation_data=(X_val, y_val))  
 
