@@ -17,31 +17,31 @@ import seaborn as sns
 
 
 batch_size = 32
-seq_len = 128
+seq_len = 18
 
 d_k = 256
 d_v = 256
 n_heads = 12
 ff_dim = 256
 
-df = pd.read_parquet("../Operation_OCV/stock_data/stock_data_eod/bank/BAC")
+df = pd.read_parquet("../Operation_OCV/stock_data/stock_data_eod/industry/BA")
 df = df[["adjusted_volume", "adjusted_close", "adjusted_open", "adjusted_high", "adjusted_low"]]
 df.columns = ["volume", "close", "open", "high", "low"]
 # dft = TA.SMA(df,10)
 # df = df.join(dft)
 # df.dropna(inplace=True)
 # ax = sns.lineplot(df.index, df.close)
-# ax.set_title("Bank of America Close Price")
+# ax.set_title("Boeing Close Price")
 # ax.set_xlabel("Time Distribution in Days")
 # ax.set_ylabel("Closing Price")
-# plt.savefig("Bank of America Close Price Graph")
+# plt.savefig("Boeing Close Price Graph")
 # plt.close()
 
 # ax = sns.lineplot(df.index, df.volume)
-# ax.set_title("Bank of America Volume")
+# ax.set_title("Boeing Volume")
 # ax.set_xlabel("Time Distribution in Days")
 # ax.set_ylabel("Volume")
-# plt.savefig("Bank of America Volume Graph")
+# plt.savefig("Boeing Volume Graph")
 # plt.close()
 ############################# USING NORMAL STOCK DATA#######################################
 # df['open'] = df['open'].pct_change() # Create arithmetic returns column
@@ -133,7 +133,7 @@ print(f'Test data shape: {test_data.shape}')
 X_train, y_train = [], []
 for i in range(seq_len, len(train_data)):
   X_train.append(train_data[i-seq_len:i]) # Chunks of training data with a length of 128 df-rows
-  y_train.append(train_data[:, 3][i]) #Value of 4th column (Close Price) of df-row 128+1
+  y_train.append(train_data[:, 1][i]) #Value of 4th column (Close Price) of df-row 128+1
 X_train, y_train = np.array(X_train), np.array(y_train)
 
 ###############################################################################
@@ -142,7 +142,7 @@ X_train, y_train = np.array(X_train), np.array(y_train)
 X_val, y_val = [], []
 for i in range(seq_len, len(val_data)):
     X_val.append(val_data[i-seq_len:i])
-    y_val.append(val_data[:, 3][i])
+    y_val.append(val_data[:, 1][i])
 X_val, y_val = np.array(X_val), np.array(y_val)
 
 ###############################################################################
@@ -151,7 +151,7 @@ X_val, y_val = np.array(X_val), np.array(y_val)
 X_test, y_test = [], []
 for i in range(seq_len, len(test_data)):
     X_test.append(test_data[i-seq_len:i])
-    y_test.append(test_data[:, 3][i])    
+    y_test.append(test_data[:, 1][i])    
 X_test, y_test = np.array(X_test), np.array(y_test)
 
 print('Training set shape', X_train.shape, y_train.shape)
@@ -330,12 +330,12 @@ def create_model():
   #x = attn_layer3((x, x, x))
   x = GlobalAveragePooling1D(data_format='channels_first')(x)
   x = Dropout(0.1)(x)
-  x = Dense(64, activation='sigmoid')(x)
+  x = Dense(105, activation='softsign')(x)
   x = Dropout(0.1)(x)
   out = Dense(1, activation='linear')(x)
-
   model = Model(inputs=in_seq, outputs=out)
-  model.compile(loss='mse', optimizer='adam', metrics=['mae', 'mape'])
+  adam = tf.keras.optimizers.Adam(lr=.01)
+  model.compile(loss='mse', optimizer= adam, metrics=['mae', 'mape'])
   return model
 
 
@@ -385,33 +385,33 @@ print('Test Data - Loss: {:.4f}, MAE: {:.4f}, MAPE: {:.4f}'.format(test_eval[0],
 '''Display results'''
 
 fig = plt.figure(figsize=(15,20))
-st = fig.suptitle("Transformer2", fontsize=22)
+st = fig.suptitle("Boeing Transformer", fontsize=22)
 st.set_y(0.92)
 
 #Plot training data results
 ax11 = fig.add_subplot(311)
-ax11.plot(train_data[:, 3], label='Bank Of America Closing Returns')
-ax11.plot(np.arange(seq_len, train_pred.shape[0]+seq_len), train_pred, linewidth=3, label='Predicted Bank Of America Closing Returns')
+ax11.plot(train_data[:, 1], label='Boeing Closing Returns')
+ax11.plot(np.arange(seq_len, train_pred.shape[0]+seq_len), train_pred, linewidth=3, label='Predicted Boeing Closing Returns')
 ax11.set_title("Training Data", fontsize=18)
 ax11.set_xlabel('Date')
-ax11.set_ylabel('Bank Of America Closing Returns')
+ax11.set_ylabel('Boeing Closing Returns')
 ax11.legend(loc="best", fontsize=12)
 
 #Plot validation data results
 ax21 = fig.add_subplot(312)
-ax21.plot(val_data[:, 3], label='Bank Of America Closing Returns')
-ax21.plot(np.arange(seq_len, val_pred.shape[0]+seq_len), val_pred, linewidth=3, label='Predicted Bank Of America Closing Returns')
+ax21.plot(val_data[:, 1], label='Boeing Closing Returns')
+ax21.plot(np.arange(seq_len, val_pred.shape[0]+seq_len), val_pred, linewidth=3, label='Predicted Boeing Closing Returns')
 ax21.set_title("Validation Data", fontsize=18)
 ax21.set_xlabel('Date')
-ax21.set_ylabel('Bank Of America Closing Returns')
+ax21.set_ylabel('Boeing Closing Returns')
 ax21.legend(loc="best", fontsize=12)
 
 #Plot test data results
 ax31 = fig.add_subplot(313)
-ax31.plot(test_data[:, 3], label='Bank Of America Closing Returns')
-ax31.plot(np.arange(seq_len, test_pred.shape[0]+seq_len), test_pred, linewidth=3, label='Predicted Bank Of America Closing Returns')
+ax31.plot(test_data[:, 1], label='Boeing Closing Returns')
+ax31.plot(np.arange(seq_len, test_pred.shape[0]+seq_len), test_pred, linewidth=3, label='Predicted Boeing Closing Returns')
 ax31.set_title("Test Data", fontsize=18)
 ax31.set_xlabel('Date')
-ax31.set_ylabel('Bank Of America Closing Returns')
+ax31.set_ylabel('Boeing Closing Returns')
 ax31.legend(loc="best", fontsize=12)
 
